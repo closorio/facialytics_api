@@ -1,0 +1,11 @@
+opencv-python==4.8.1.78
+tensorflow==2.16.1
+numpy==1.26.0
+imutils==0.5.4
+fastapi==0.95.2
+uvicorn==0.22.0
+python-multipart==0.0.6
+python-jose==3.3.0
+passlib==1.7.4
+python-dotenv==1.0.0
+pillow==9.5.0
