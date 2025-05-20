@@ -1,11 +1,13 @@
+## @app/routes/video_processing_router.py
+
 import asyncio
 import cv2
 import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from app.services.webcam_service import WebcamService
+from app.services.video_processing_service import WebcamService
 from app.models.emotion_model import EmotionModel 
-from app.schemas import ProcessResponse 
+from app.schemas.api.video_processing import ProcessResponse 
 
 router = APIRouter()
 webcam_service = WebcamService()

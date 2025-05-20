@@ -1,8 +1,10 @@
+## @file app/main.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import detection, history
-from app.routes import webcam 
-from app.middleware.numpy_converter import numpy_converter_middleware
+from app.routes import history_router, image_processing_router
+from app.routes import video_processing_router 
+from app.middleware.serialization_middleware import serialization_middleware
 
 app = FastAPI(
     title="Emotion Detection API",
@@ -11,7 +13,7 @@ app = FastAPI(
 )
 
 # Middleware to convert NumPy types to native Python types
-app.middleware("http")(numpy_converter_middleware)
+app.middleware("http")(serialization_middleware)
 
 # CORS configuration
 app.add_middleware(
@@ -24,9 +26,9 @@ app.add_middleware(
 
 
 # Include routers
-app.include_router(detection.router, prefix="/api/v1/detection", tags=["detection"])
-app.include_router(history.router, prefix="/api/v1/history", tags=["history"])
-app.include_router(webcam.router, prefix="/api/v1/webcam", tags=["webcam"])
+app.include_router(image_processing_router.router, prefix="/api/v1/detection", tags=["detection"])
+app.include_router(history_router.router, prefix="/api/v1/history", tags=["history"])
+app.include_router(video_processing_router.router, prefix="/api/v1/webcam", tags=["webcam"])
 
 @app.get("/")
 async def root():

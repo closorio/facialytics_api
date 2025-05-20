@@ -1,3 +1,5 @@
+## @file app/services/video_processing_service.py
+
 import cv2
 import threading
 import time
@@ -9,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("WebcamService")
 
 class WebcamService:
-    def __init__(self, camera_index=1):
+    def __init__(self, camera_index=0):
         self.camera_index = camera_index
         self.cap = None
         self.latest_frame = np.zeros((480, 640, 3), dtype=np.uint8)  # Frame negro por defecto

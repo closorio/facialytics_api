@@ -1,8 +1,10 @@
+## @file app/routes/image_processing_router.py
+
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from app.models.schemas import DetectionResponse
+from app.schemas.api.image_processing import DetectionResponse
 from app.models.emotion_model import EmotionModel
-from app.services.detection import process_image
-from app.services.storage import save_to_history
+from app.services.image_processing_service import process_image
+from app.services.history_repository import save_to_history
 from typing import Annotated
 
 router = APIRouter()

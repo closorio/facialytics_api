@@ -1,9 +1,13 @@
+## @file app/services/image_processing_service.py
+
 from datetime import datetime
 import uuid
 import cv2
 import numpy as np
-from app.models.schemas import DetectionResult, EmotionScores, BoundingBox, DetectionResponse, HistoryRecord
-from app.services.storage import save_to_history
+from app.schemas.api.image_processing import DetectionResult, DetectionResponse
+from app.schemas.domain.emotions import EmotionScores
+from app.schemas.domain.faces import BoundingBox  # Para la clase
+from app.services.history_repository import save_to_history
 
 async def process_image(image, emotion_model):
     # Convertir imagen a formato OpenCV
@@ -19,7 +23,12 @@ async def process_image(image, emotion_model):
     detections = []
     
     for face in faces:
-        (Xi, Yi, Xf, Yf) = face["box"]
+        # Asegúrate de convertir los valores a enteros
+        box = face["box"]
+        x = int(box["x"])
+        y = int(box["y"])
+        width = int(box["width"])
+        height = int(box["height"])
         
         detection = DetectionResult(
             faceId=f"face-{str(uuid.uuid4())[:8]}",
@@ -27,10 +36,10 @@ async def process_image(image, emotion_model):
             dominantEmotion=face["dominant_emotion"],
             timestamp=datetime.utcnow(),
             boundingBox=BoundingBox(
-                x=Xi,
-                y=Yi,
-                width=Xf - Xi,
-                height=Yf - Yi
+                x=x,
+                y=y,
+                width=width,
+                height=height
             )
         )
         detections.append(detection)

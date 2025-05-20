@@ -1,7 +1,9 @@
+## @file app/routes/history_router.py
+
 from fastapi import APIRouter, HTTPException
-from app.services.storage import get_history, clear_history
+from app.services.history_repository import get_history, clear_history
 from typing import List
-from app.models.schemas import HistoryRecord
+from app.schemas.api.history import HistoryRecord
 
 router = APIRouter()
 

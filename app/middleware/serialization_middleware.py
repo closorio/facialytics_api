@@ -1,3 +1,5 @@
+## @file app/middleware/serialization_middleware.py
+
 import numpy as np
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -18,7 +20,7 @@ def convert_numpy(obj):
     else:
         return obj
 
-async def numpy_converter_middleware(request: Request, call_next):
+async def serialization_middleware(request: Request, call_next):
     response = await call_next(request)
     
     try:

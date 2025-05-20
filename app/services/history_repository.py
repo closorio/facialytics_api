@@ -1,6 +1,8 @@
+## @file app/services/history_repository.py
+
 from datetime import datetime
 from typing import List, Optional
-from app.models.schemas import DetectionResult, HistoryRecord
+from app.schemas.api.image_processing import DetectionResult, HistoryRecord
 import uuid
 import base64
 import cv2

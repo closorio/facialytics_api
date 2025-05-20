@@ -1,7 +1,8 @@
 .env
 venv/
 .venv/
-models/RESNET50/emotion_recognition_resnet50v2.keras
+commits.txt
+emotion_recognition_resnet50v2.keras
 
 # Python
 __pycache__/

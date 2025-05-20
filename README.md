@@ -52,19 +52,19 @@ Este proyecto implementa un sistema de **detección de emociones faciales en tie
     $ pip install -r requirements.txt 
 
     
-### Usando WebCam
+## Usando WebCam
 
-Inicializar API
+### Inicializar API
 
     $ uvicorn app.main:app --reload
 
-API Docs
-  http://127.0.0.1:8000/docs
+### API Docs
+    http://127.0.0.1:8000/docs
 
-API Stream 
-  http://localhost:8000/api/v1/webcam/stream
+### API Stream 
+    http://localhost:8000/api/v1/webcam/stream
 
-API Process Last Frame
-  http://localhost:8000/api/v1/webcam/process-latest-frame
+### API Process Last Frame
+    http://localhost:8000/api/v1/webcam/process-latest-frame
 
 

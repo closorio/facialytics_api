@@ -1,3 +1,5 @@
+## @file app/models/emotion_model.py
+
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model # type: ignore
@@ -79,7 +81,12 @@ class EmotionModel:
                 dominant_emotion = emotion_mapping[self.classes[dominant_idx]]
                 
                 faces.append({
-                    "box": (Xi, Yi, Xf, Yf),
+                    "box": {
+                        "x": Xi,
+                        "y": Yi,
+                        "width": Xf - Xi,
+                        "height": Yf - Yi
+                    },
                     "scores": normalized_scores,
                     "dominant_emotion": dominant_emotion
                 })
