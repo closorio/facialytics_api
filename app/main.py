@@ -2,8 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routes import history_router, image_processing_router
-from app.routes import video_processing_router 
+from app.routes import history_router, image_processing_router, video_processing_router
 from app.middleware.serialization_middleware import serialization_middleware
 
 app = FastAPI(

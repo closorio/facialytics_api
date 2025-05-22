@@ -2,10 +2,14 @@
 
 import cv2
 import threading
-import time
+import time 
+import base64
+from datetime import datetime
 import numpy as np
-from typing import Optional
 import logging
+from app.schemas.core import DetectionType
+from app.schemas.api.history import HistoryRecordCreate
+from app.services.history_repository import history_repo
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("WebcamService")
@@ -84,3 +88,72 @@ class WebcamService:
         if hasattr(self, 'cap') and self.cap:
             self.cap.release()
         logger.info("Servicio de cámara detenido")
+        
+
+    async def process_frame(self, emotion_model) -> dict:
+        frame = self.get_latest_frame()
+        if frame is None:
+            raise ValueError("No frame available")
+        
+        raw_faces = emotion_model.predict_emotion(frame)
+        
+        if raw_faces:
+            try:
+                # Procesar la cara dominante
+                dominant_face = max(raw_faces, key=lambda x: max(x["scores"].values()))
+                
+                # Crear registro de historial
+                record_data = HistoryRecordCreate(
+                    timestamp=datetime.utcnow(),
+                    dominant_emotion=dominant_face["dominant_emotion"],
+                    emotion_scores={
+                        "joy": float(dominant_face["scores"].get("joy", 0)),
+                        "sadness": float(dominant_face["scores"].get("sadness", 0)),
+                        "anger": float(dominant_face["scores"].get("anger", 0)),
+                        "surprise": float(dominant_face["scores"].get("surprise", 0)),
+                        "fear": float(dominant_face["scores"].get("fear", 0)),
+                        "disgust": float(dominant_face["scores"].get("disgust", 0)),
+                        "neutral": float(dominant_face["scores"].get("neutral", 0))
+                    },
+                    detection_type=DetectionType.VIDEO,
+                    image_snapshot=self._frame_to_base64(frame)
+                )
+                
+                await history_repo.create_record(record_data)
+
+            except Exception as e:
+                logger.error(f"Error al guardar en historial: {str(e)}")
+                
+        # Convertir todos los valores NumPy a nativos
+        processed_faces = []
+        for face in raw_faces:
+            processed_face = {
+                "box": {
+                    "x": int(face["box"]["x"]),
+                    "y": int(face["box"]["y"]),
+                    "width": int(face["box"]["width"]),
+                    "height": int(face["box"]["height"])
+                },
+                "scores": {k: float(v) for k, v in face["scores"].items()},
+                "dominant_emotion": str(face["dominant_emotion"])
+            }
+            processed_faces.append(processed_face)
+        
+        return {
+            "faces": processed_faces,
+            "frame_size": {
+                "height": int(frame.shape[0]),
+                "width": int(frame.shape[1]),
+                "channels": int(frame.shape[2]) if len(frame.shape) > 2 else 1
+            },
+            "success": True
+        }
+    
+    def _frame_to_base64(self, frame: np.ndarray) -> str:
+        """Convierte un frame de video a base64"""
+        try:
+            _, buffer = cv2.imencode('.jpg', frame)
+            return f"data:image/jpeg;base64,{base64.b64encode(buffer).decode('utf-8')}"
+        except Exception as e:
+            logger.error(f"Error al convertir frame a base64: {str(e)}")
+            return ""

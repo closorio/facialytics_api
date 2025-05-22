@@ -1,17 +1,22 @@
-## @app/routes/video_processing_router.py
+## @file app/routes/video_processing_router.py
 
 import asyncio
 import cv2
 import logging
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from app.services.video_processing_service import WebcamService
 from app.models.emotion_model import EmotionModel 
-from app.schemas.api.video_processing import ProcessResponse 
+from typing import Annotated
+from app.schemas.api.video_processing import ProcessResponse
 
 router = APIRouter()
 webcam_service = WebcamService()
-emotion_model = EmotionModel() 
+
+def get_emotion_model() -> EmotionModel:
+    """Función de dependencia para obtener una instancia del modelo de emociones"""
+    return EmotionModel()
+
 logger = logging.getLogger(__name__)
 
 async def generate_frames():
@@ -60,24 +65,17 @@ async def shutdown_event():
     webcam_service.stop()
 
 @router.get("/process-latest-frame", response_model=ProcessResponse)
-async def process_latest_frame():
-    frame = webcam_service.get_latest_frame()
-    if frame is None:
-        raise HTTPException(status_code=404, detail="No se pudo capturar el frame")
-    
+async def process_latest_frame(
+    emotion_model: Annotated[EmotionModel, Depends(get_emotion_model)]
+):
     try:
-        raw_faces = emotion_model.predict_emotion(frame)
-        
-        return ProcessResponse(
-            faces=raw_faces,  # ← Ya tiene la estructura correcta
-            frame_size={
-                "height": int(frame.shape[0]),
-                "width": int(frame.shape[1]),
-                "channels": int(frame.shape[2]) if len(frame.shape) > 2 else 1
-            },
-            success=True
-        )
+        # Usamos el método process_frame que ya incluye la lógica para guardar en el historial
+        result = await webcam_service.process_frame(emotion_model)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
+        logger.error(f"Error processing frame: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Error al procesar emociones: {str(e)}"

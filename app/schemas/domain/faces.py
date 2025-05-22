@@ -9,7 +9,7 @@ class BoundingBox(BaseModel):
     width: int
     height: int
 
-    # Método para convertir a tupla (opcional)
+    # Método para convertir a tupla
     def to_tuple(self) -> tuple[int, int, int, int]:
         return (self.x, self.y, self.x + self.width, self.y + self.height)
 
