@@ -1,0 +1,23 @@
+.env
+venv/
+.venv/
+commits.txt
+emotion_recognition_resnet50v2.keras
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.whl
+*.mypy_cache/
+*.pytest_cache/
+*.coverage
+.coverage.*
+*.hypothesis/
+*.tox/
+*.coverage.*
+*.coverage
