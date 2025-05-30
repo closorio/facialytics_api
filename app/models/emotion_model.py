@@ -1,35 +1,66 @@
-## @file app/models/emotion_model.py
-
 import cv2
 import numpy as np
-from tensorflow.keras.models import load_model # type: ignore
-from tensorflow.keras.utils import img_to_array # type: ignore
+from tensorflow.keras.models import load_model  # type: ignore
+from tensorflow.keras.utils import img_to_array  # type: ignore
+import threading
+from typing import Dict, List, Tuple
 
 class EmotionModel:
-    def __init__(self, model_path: str = "models/RESNET50/emotion_recognition_resnet50v2.keras"):
-        # Cargar modelo de emociones
-        self.emotion_model = load_model(model_path)
-        self.classes = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
-        
-        # Cargar modelo de detección de rostros
-        self.prototxt_path = "face_detector/deploy.prototxt"
-        self.weights_path = "face_detector/res10_300x300_ssd_iter_140000.caffemodel"
-        self.face_net = cv2.dnn.readNet(self.prototxt_path, self.weights_path)
+    _lock = threading.Lock()  # Lock para operaciones que no son thread-safe
+    _instance = None
     
-    def detect_faces(self, frame):
+    def __new__(cls, *args, **kwargs):
+        """Implementación singleton thread-safe"""
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super(EmotionModel, cls).__new__(cls)
+                    cls._instance._initialized = False
+        return cls._instance
+    
+    def __init__(self, model_path: str = "models/RESNET50/emotion_recognition_resnet50v2.keras"):
+        """Inicialización thread-safe con doble verificación"""
+        if self._initialized:
+            return
+            
+        with self._lock:
+            if not self._initialized:
+                # Cargar modelo de emociones (solo una vez)
+                self.emotion_model = load_model(model_path)
+                self.classes = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
+                
+                # Cargar modelo de detección de rostros
+                self.prototxt_path = "face_detector/deploy.prototxt"
+                self.weights_path = "face_detector/res10_300x300_ssd_iter_140000.caffemodel"
+                self.face_net = cv2.dnn.readNet(self.prototxt_path, self.weights_path)
+                
+                # Marcar como inicializado
+                self._initialized = True
+    
+    def detect_faces(self, frame: np.ndarray) -> Tuple[np.ndarray, int, int]:
+        """
+        Detecta rostros en un frame de imagen.
+        Thread-safe: solo usa variables locales y de instancia de solo lectura.
+        """
         (h, w) = frame.shape[:2]
-        blob = cv2.dnn.blobFromImage(frame, 1.0, (300, 300), (104.0, 177.0, 123.0))
-        self.face_net.setInput(blob)
-        detections = self.face_net.forward()
+        
+        # BlobFromImage y forward necesitan lock por usar recursos compartidos de OpenCV
+        with self._lock:
+            blob = cv2.dnn.blobFromImage(frame, 1.0, (300, 300), (104.0, 177.0, 123.0))
+            self.face_net.setInput(blob)
+            detections = self.face_net.forward()
+        
         return detections, h, w
     
-    def predict_emotion(self, frame):
-        # Detectar rostros
+    def predict_emotion(self, frame: np.ndarray) -> List[Dict]:
+        """
+        Predice emociones en los rostros detectados.
+        Thread-safe: operaciones independientes con locking donde es necesario.
+        """
+        # Detectar rostros (ya maneja su propio locking)
         detections, h, w = self.detect_faces(frame)
         
         faces = []
-        locs = []
-        preds = []
         
         for i in range(0, detections.shape[2]):
             confidence = detections[0, 0, i, 2]
@@ -45,17 +76,18 @@ class EmotionModel:
                 if face.size == 0:
                     continue
                     
-                # Preprocesamiento para el modelo RESNET50V2
+                # Preprocesamiento (operaciones thread-safe de OpenCV/NumPy)
                 face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
                 face = cv2.resize(face, (224, 224))
                 face = img_to_array(face)
                 face = np.expand_dims(face, axis=0)
                 face = face / 255.0
 
-                # Predecir emociones
-                pred = self.emotion_model.predict(face, verbose=0)[0]
+                # Predecir emociones (necesita lock para Keras)
+                with self._lock:
+                    pred = self.emotion_model.predict(face, verbose=0)[0]
                 
-                # Mapear a los nombres de emociones que espera tu frontend
+                # Procesamiento posterior (thread-safe)
                 emotion_mapping = {
                     'angry': 'anger',
                     'disgust': 'disgust',
@@ -66,17 +98,16 @@ class EmotionModel:
                     'surprise': 'surprise'
                 }
                 
-                # Convertir predicción al formato esperado
                 emotion_scores = {
                     emotion_mapping[self.classes[i]]: float(pred[i]) 
                     for i in range(len(self.classes))
                 }
                 
-                # Normalizar scores para que sumen 1
+                # Normalizar scores
                 total = sum(emotion_scores.values())
                 normalized_scores = {k: v/total for k, v in emotion_scores.items()}
                 
-                # Determinar emoción dominante
+                # Emoción dominante
                 dominant_idx = np.argmax(pred)
                 dominant_emotion = emotion_mapping[self.classes[dominant_idx]]
                 

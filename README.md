@@ -23,8 +23,9 @@ Este proyecto implementa un sistema de **detección de emociones faciales en tie
 
 - 🤖 **Modelo avanzado**:
   - Arquitectura ResNet50V2 optimizada
-  - Modelo pre-entrenado en formato `.keras`
-  - Procesamiento eficiente de imágenes
+  - Transfer Learning en los pesos de aprendizaje con `imagenet` de AffectNet
+  - Modelo entrenado en formato `.keras`
+  - Procesamiento eficiente de con generador de imágenes
 
 ## 🛠️ Componentes Técnicos
 
@@ -65,11 +66,8 @@ Este proyecto implementa un sistema de **detección de emociones faciales en tie
 ### API Process Image (Probar desde docs)
     http://localhost:8000/api/v1/detection/process-image    
 
-### API Video Stream (Probar desde el navegador)
-    http://localhost:8000/api/v1/webcam/stream
-
 ### API Process Lastest Frame
-    http://localhost:8000/api/v1/webcam/process-latest-frame
+    http://localhost:8000/api/v1/webcam/process-frame
 
 ### API History
     http://localhost:8000/api/v1/history/

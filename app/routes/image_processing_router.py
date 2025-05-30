@@ -5,11 +5,13 @@ from app.models.emotion_model import EmotionModel
 from app.services.image_processing_service import process_image
 from app.schemas.api.image_processing import DetectionResponse
 from typing import Annotated
+from functools import lru_cache
 
 router = APIRouter()
 
-# Dependency para el modelo de emociones
-def get_emotion_model():
+# Dependency para el modelo de emociones con caché
+@lru_cache(maxsize=1)
+def get_emotion_model() -> EmotionModel:
     return EmotionModel()
 
 @router.post("/process-image", response_model=DetectionResponse)

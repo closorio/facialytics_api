@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detección de Emociones en Tiempo Real</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .video-container {
+            position: relative;
+            margin: 20px auto;
+            width: 640px;
+            height: 480px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        #video {
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: none;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .emotion-bar {
+            height: 20px;
+            margin: 5px 0;
+            background-color: #ecf0f1;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .emotion-fill {
+            height: 100%;
+            background-color: #3498db;
+            transition: width 0.5s;
+        }
+        .emotion-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .face-info {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e8f4f8;
+            border-radius: 4px;
+        }
+        #toggleProcessing {
+            background-color: #27ae60;
+        }
+        #toggleProcessing:hover {
+            background-color: #219653;
+        }
+        #toggleProcessing.active {
+            background-color: #e74c3c;
+        }
+        #toggleProcessing.active:hover {
+            background-color: #c0392b;
+        }
+        .processing-info {
+            text-align: center;
+            margin: 10px 0;
+            font-style: italic;
+            color: #7f8c8d;
+        }
+        .fps-counter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .processing-stats {
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+        .queue-size {
+            position: absolute;
+            top: 40px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Detección de Emociones en Tiempo Real</h1>
+        
+        <div class="video-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+            <div class="fps-counter" id="fpsCounter">0 FPS</div>
+            <div class="queue-size" id="queueSize">Queue: 0</div>
+        </div>
+        
+        <div class="processing-info" id="processingInfo" style="display: none;">
+            Procesando video en tiempo real...
+            <div class="processing-stats" id="processingStats"></div>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn">Iniciar Cámara</button>
+            <button id="stopBtn" disabled>Detener Cámara</button>
+            <button id="toggleProcessing" disabled>Iniciar Procesamiento</button>
+        </div>
+        
+        <div class="results" id="results" style="display: none;">
+            <h3>Resultados de Análisis:</h3>
+            <div id="emotionResults"></div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos del DOM
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const toggleProcessingBtn = document.getElementById('toggleProcessing');
+        const resultsDiv = document.getElementById('results');
+        const emotionResults = document.getElementById('emotionResults');
+        const processingInfo = document.getElementById('processingInfo');
+        const fpsCounter = document.getElementById('fpsCounter');
+        const processingStats = document.getElementById('processingStats');
+        const queueSizeDisplay = document.getElementById('queueSize');
+        
+        // Variables de estado
+        let stream = null;
+        let processingInterval = null;
+        let isProcessingActive = false;
+        let animationFrameId = null;
+        let frameCount = 0;
+        let lastFpsUpdate = 0;
+        let fps = 0;
+        
+        // Configuración de procesamiento
+        const TARGET_PROCESSING_FPS = 5; // Objetivo de frames por segundo a procesar
+        const MAX_QUEUE_SIZE = 3; // Máximo de frames en cola
+        
+        // Variables para el procesamiento
+        let processingQueue = [];
+        let isProcessingFrame = false;
+        let requestSequence = 0;
+        let lastProcessedSequence = -1;
+        let lastResults = null;
+        let processingTimes = [];
+        
+        // Colores para las bounding boxes
+        const emotionColors = {
+            'joy': '#2ecc71',
+            'anger': '#e74c3c',
+            'sadness': '#3498db',
+            'surprise': '#f1c40f',
+            'fear': '#9b59b6',
+            'disgust': '#1abc9c',
+            'neutral': '#95a5a6'
+        };
+        
+        // Iniciar la cámara
+        startBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user'
+                    },
+                    audio: false
+                });
+                
+                video.srcObject = stream;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                toggleProcessingBtn.disabled = false;
+                
+                // Esperar a que el video esté listo
+                video.onloadedmetadata = () => {
+                    video.style.display = 'block';
+                    // Iniciar el bucle de renderizado
+                    renderLoop();
+                };
+            } catch (err) {
+                console.error("Error al acceder a la cámara:", err);
+                alert("No se pudo acceder a la cámara. Asegúrate de permitir el acceso.");
+            }
+        });
+        
+        // Detener la cámara
+        stopBtn.addEventListener('click', () => {
+            stopCamera();
+        });
+        
+        // Alternar procesamiento en tiempo real
+        toggleProcessingBtn.addEventListener('click', () => {
+            isProcessingActive = !isProcessingActive;
+            
+            if (isProcessingActive) {
+                toggleProcessingBtn.textContent = 'Detener Procesamiento';
+                toggleProcessingBtn.classList.add('active');
+                processingInfo.style.display = 'block';
+                startProcessing();
+            } else {
+                toggleProcessingBtn.textContent = 'Iniciar Procesamiento';
+                toggleProcessingBtn.classList.remove('active');
+                processingInfo.style.display = 'none';
+                stopProcessing();
+            }
+        });
+        
+        // Bucle principal de renderizado
+        function renderLoop() {
+            if (!stream) return;
+            
+            // Calcular FPS
+            const now = performance.now();
+            frameCount++;
+            
+            if (now - lastFpsUpdate >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsUpdate = now;
+                fpsCounter.textContent = `${fps} FPS`;
+            }
+            
+            // Limpiar y dibujar frame de video
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Dibujar resultados (usando copia local para evitar condiciones de carrera)
+            const currentResults = lastResults;
+            if (currentResults?.faces?.length > 0) {
+                drawDetectionResults(currentResults);
+            }
+            
+            animationFrameId = requestAnimationFrame(renderLoop);
+        }
+        
+        // Función para dibujar los resultados de detección
+        function drawDetectionResults(data) {
+            data.faces.forEach(face => {
+                const box = face.box;
+                const emotion = face.dominant_emotion;
+                const color = emotionColors[emotion] || '#00FF00';
+                const maxScore = Math.max(...Object.values(face.scores));
+                const percentage = (maxScore * 100).toFixed(1);
+                const text = `${emotion} (${percentage}%)`;
+                
+                // Dibujar bounding box
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(box.x, box.y, box.width, box.height);
+                
+                // Dibujar fondo para el texto
+                ctx.fillStyle = color;
+                const textWidth = ctx.measureText(text).width;
+                ctx.fillRect(box.x - 2, box.y - 25, textWidth + 10, 20);
+                
+                // Dibujar texto
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '14px Arial';
+                ctx.fillText(text, box.x + 3, box.y - 10);
+            });
+        }
+        
+        // Función para detener la cámara
+        function stopCamera() {
+            if (stream) {
+                stopProcessing();
+                
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+                video.style.display = 'none';
+                
+                // Detener el bucle de renderizado
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                
+                // Limpiar canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Restablecer controles
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                toggleProcessingBtn.disabled = true;
+                toggleProcessingBtn.textContent = 'Iniciar Procesamiento';
+                toggleProcessingBtn.classList.remove('active');
+                processingInfo.style.display = 'none';
+                
+                // Limpiar estado
+                processingQueue = [];
+                lastResults = null;
+                queueSizeDisplay.textContent = `Queue: 0`;
+                
+                // Ocultar resultados
+                resultsDiv.style.display = 'none';
+            }
+        }
+        
+        // Función para iniciar el procesamiento en tiempo real
+        function startProcessing() {
+            if (!processingInterval) {
+                // Configurar intervalo para procesamiento continuo
+                processingInterval = setInterval(() => {
+                    if (!isProcessingFrame && processingQueue.length < MAX_QUEUE_SIZE) {
+                        addFrameToQueue();
+                    }
+                }, 1000 / TARGET_PROCESSING_FPS);
+                
+                // Procesar la cola inicial
+                processQueue();
+            }
+        }
+        
+        // Función para agregar frame a la cola de procesamiento
+        function addFrameToQueue() {
+            if (isProcessingFrame || processingQueue.length >= MAX_QUEUE_SIZE) {
+                return;
+            }
+            
+            const currentSequence = ++requestSequence;
+            
+            // Obtener el frame del canvas como Blob
+            canvas.toBlob(blob => {
+                processingQueue.push({
+                    sequence: currentSequence,
+                    blob: blob,
+                    timestamp: Date.now()
+                });
+                
+                queueSizeDisplay.textContent = `Queue: ${processingQueue.length}`;
+                
+                // Si no hay procesamiento activo, iniciarlo
+                if (!isProcessingFrame) {
+                    processQueue();
+                }
+            }, 'image/jpeg', 0.8);
+        }
+        
+        // Función para procesar la cola
+        async function processQueue() {
+            if (isProcessingFrame || processingQueue.length === 0) {
+                return;
+            }
+            
+            isProcessingFrame = true;
+            const startTime = performance.now();
+            
+            try {
+                // Tomar el frame más antiguo de la cola
+                const frameData = processingQueue.shift();
+                queueSizeDisplay.textContent = `Queue: ${processingQueue.length}`;
+                
+                // Crear FormData para enviar la imagen
+                const formData = new FormData();
+                formData.append('file', frameData.blob, 'frame.jpg');
+                formData.append('sequence', frameData.sequence.toString());
+                
+                // Enviar al backend para procesamiento
+                const response = await fetch('http://localhost:8000/api/v1/webcam/process-frame', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Error en el servidor');
+                }
+                
+                const data = await response.json();
+                const processingTime = performance.now() - startTime;
+                
+                // Actualizar estadísticas
+                updateProcessingStats(processingTime);
+                
+                // Solo actualizar si es la respuesta más reciente
+                if (frameData.sequence > lastProcessedSequence) {
+                    lastProcessedSequence = frameData.sequence;
+                    lastResults = JSON.parse(JSON.stringify(data));
+                    updateResultsPanel(lastResults);
+                }
+            } catch (error) {
+                console.error('Error al procesar el frame:', error);
+            } finally {
+                isProcessingFrame = false;
+                
+                // Procesar siguiente frame si hay en cola
+                if (processingQueue.length > 0) {
+                    setTimeout(processQueue, 0);
+                }
+            }
+        }
+        
+        // Función para detener el procesamiento
+        function stopProcessing() {
+            if (processingInterval) {
+                clearInterval(processingInterval);
+                processingInterval = null;
+                processingQueue = [];
+                queueSizeDisplay.textContent = `Queue: 0`;
+            }
+        }
+        
+        // Función para actualizar estadísticas de procesamiento
+        function updateProcessingStats(processingTime) {
+            processingTimes.push(processingTime);
+            
+            // Mantener solo las últimas 10 mediciones
+            if (processingTimes.length > 10) {
+                processingTimes.shift();
+            }
+            
+            // Calcular promedio
+            const avgTime = processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length;
+            const fpsEstimate = 1000 / avgTime;
+            
+            processingStats.innerHTML = `
+                <div>Tiempo de procesamiento: ${avgTime.toFixed(1)}ms</div>
+                <div>FPS estimados: ${fpsEstimate.toFixed(1)}</div>
+                <div>Última secuencia: ${lastProcessedSequence}</div>
+            `;
+        }
+        
+        // Función para actualizar el panel de resultados
+        function updateResultsPanel(data) {
+            if (!data.faces || data.faces.length === 0) {
+                emotionResults.innerHTML = '<p>No se detectaron rostros en la imagen.</p>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+            
+            let html = '';
+            
+            data.faces.forEach((face, index) => {
+                const emotion = face.dominant_emotion;
+                const color = emotionColors[emotion] || '#3498db';
+                
+                html += '<div class="face-info" style="border-left: 4px solid ' + color + '">' +
+                        '<h4>Rostro ' + (index + 1) + ': <span style="color: ' + color + '">' + emotion + '</span></h4>' +
+                        '<div>Posición: X=' + face.box.x + ', Y=' + face.box.y + ', Ancho=' + face.box.width + ', Alto=' + face.box.height + '</div>';
+                
+                // Añadir barras para cada emoción
+                for (const [emotionName, score] of Object.entries(face.scores)) {
+                    const percentage = (score * 100).toFixed(1);
+                    const barColor = emotionColors[emotionName] || '#3498db';
+                    
+                    html += '<div class="emotion-label">' +
+                            '<span>' + emotionName + '</span>' +
+                            '<span>' + percentage + '%</span>' +
+                            '</div>' +
+                            '<div class="emotion-bar">' +
+                            '<div class="emotion-fill" style="width: ' + percentage + '%; background-color: ' + barColor + '"></div>' +
+                            '</div>';
+                }
+                
+                html += '</div>';
+            });
+            
+            emotionResults.innerHTML = html;
+            resultsDiv.style.display = 'block';
+        }
+        
+        // Manejar cierre de la página
+        window.addEventListener('beforeunload', () => {
+            stopCamera();
+        });
+    </script>
+</body>
+</html>
