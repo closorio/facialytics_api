@@ -62,12 +62,16 @@ async def process_video_frame(frame: np.ndarray, emotion_model: EmotionModel) ->
         "timestamp": datetime.utcnow().isoformat()
     }
 
-async def process_uploaded_video_frame(file_contents: bytes) -> Dict:
+async def process_uploaded_video_frame(
+    file_contents: bytes,
+    emotion_model: EmotionModel  # Recibe el modelo inyectado
+) -> Dict:
     """
     Procesa un frame de video subido como bytes
     
     Args:
         file_contents: Contenido del archivo subido (bytes)
+        emotion_model: Modelo de emociones inyectado
         
     Returns:
         Dict con los resultados del procesamiento
@@ -78,5 +82,5 @@ async def process_uploaded_video_frame(file_contents: bytes) -> Dict:
     if frame is None:
         raise ValueError("No se pudo decodificar la imagen")
     
-    emotion_model = EmotionModel()
+    # Usamos el modelo inyectado en lugar de crear uno nuevo
     return await process_video_frame(frame, emotion_model)
