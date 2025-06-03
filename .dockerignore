@@ -1,8 +1,9 @@
+# This file is used to specify files and directories that should be ignored by Docker when building images.
+# It is similar to .gitignore but specifically for Docker.
 .env
 venv/
 .venv/
 commits.txt
-emotion_recognition_resnet50v2.keras
 
 # Python
 __pycache__/
@@ -21,3 +22,4 @@ __pycache__/
 *.tox/
 *.coverage.*
 *.coverage
+
