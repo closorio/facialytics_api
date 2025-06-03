@@ -77,15 +77,15 @@ Este proyecto implementa un sistema de **detección de emociones faciales en tie
 
 ## Configuraciones de Docker
 ### Para crear build:
-  docker build -t emotion-detection-api .
+    $ docker build -t emotion-detection-api .
 
 ### Para iniciar contenedor docker
-  docker run -p 8000:8000 emotion-detection-api
+    $ docker run -p 8000:8000 emotion-detection-api
 
 
 ### Repositorio Docker Hub
-  docker login
-  docker tag emotion-detection-api closorio/emotion-detection-api:1.0
-  docker push closorio/emotion-detection-api:1.0
+    $ docker login
+    $ docker tag emotion-detection-api closorio/emotion-detection-api:1.0
+    $ docker push closorio/emotion-detection-api:1.0
 
 #### Cada 10 imágenes consumen aproximadamente 1.7 GBs de RAM
