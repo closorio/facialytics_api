@@ -2,7 +2,7 @@
 FROM python:3.10.12-slim-bookworm
 
 # Establece el directorio de trabajo
-WORKDIR /
+WORKDIR /app
 
 # Instala dependencias del sistema
 RUN apt-get update && apt-get install -y \

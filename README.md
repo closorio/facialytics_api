@@ -71,9 +71,10 @@ Este proyecto implementa un sistema de **detección de emociones faciales en tie
 
 ### API History
     http://localhost:8000/api/v1/history/
-    http://localhost:8000/api/v1/history/?page=1&per_page=10&detection_type=image
-    http://localhost:8000/api/v1/history/?page=1&per_page=10&detection_type=video
-
+    http://localhost:8000/api/v1/history/?page=1
+    http://localhost:8000/api/v1/history/?per_page=10
+    http://localhost:8000/api/v1/history/?detection_type=image
+    http://localhost:8000/api/v1/history/?dominant_emotion=joy
 
 ## Configuraciones de Docker
 ### Para crear build:
@@ -88,4 +89,3 @@ Este proyecto implementa un sistema de **detección de emociones faciales en tie
     $ docker tag emotion-detection-api closorio/emotion-detection-api:1.0
     $ docker push closorio/emotion-detection-api:1.0
 
-#### Cada 10 imágenes consumen aproximadamente 1.7 GBs de RAM

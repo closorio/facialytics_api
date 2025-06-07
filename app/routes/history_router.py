@@ -1,10 +1,8 @@
-## @file app/routes/history_router.py
-
 from fastapi import APIRouter, Query, HTTPException
 from app.schemas.api.history import HistoryResponse
 from app.services.history_repository import history_repo
 from typing import Optional
-from app.schemas.core import DetectionType 
+from app.schemas.core import DetectionType, DominantEmotion
 
 router = APIRouter()
 
@@ -15,13 +13,18 @@ async def read_history(
     detection_type: Optional[DetectionType] = Query(
         None, 
         description="Filtrar por tipo de detección: 'image' o 'video'"
+    ),
+    dominant_emotion: Optional[DominantEmotion] = Query(
+        None,
+        description="Filtrar por emoción dominante"
     )
 ):
     try:
         records = await history_repo.get_history(
             page=page,
             per_page=per_page,
-            detection_type=detection_type.value if detection_type else None
+            detection_type=detection_type.value if detection_type else None,
+            dominant_emotion=dominant_emotion.value if dominant_emotion else None
         )
         total = len(history_repo._history)
         

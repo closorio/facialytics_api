@@ -6,3 +6,12 @@ EmotionType = Literal["anger", "disgust", "fear", "joy", "neutral", "sadness", "
 class DetectionType(str, Enum):
     IMAGE = "image"
     VIDEO = "video"
+
+class DominantEmotion(str, Enum):
+    JOY = "joy"
+    SADNESS = "sadness"
+    ANGER = "anger"
+    SURPRISE = "surprise"
+    FEAR = "fear"
+    DISGUST = "disgust"
+    NEUTRAL = "neutral"

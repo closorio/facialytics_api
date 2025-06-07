@@ -1,11 +1,8 @@
-## @file: app/services/history_repository.py
-
 from typing import List, Optional
 import uuid
 import base64
 import cv2
 import logging
-from typing import Optional
 import numpy as np
 from app.schemas.api.history import HistoryRecord, HistoryRecordCreate
 
@@ -38,14 +35,16 @@ class HistoryRepository:
         self, 
         page: Optional[int] = None, 
         per_page: Optional[int] = 10,
-        detection_type: Optional[str] = None
+        detection_type: Optional[str] = None,
+        dominant_emotion: Optional[str] = None
     ) -> List[HistoryRecord]:
-        """Obtiene el historial con paginación y filtrado por tipo"""
+        """Obtiene el historial con paginación y filtrado por tipo y emoción dominante"""
         try:
-            # Filtrar por tipo si se especifica
+            # Filtrar por tipo y emoción dominante si se especifican
             filtered_records = [
                 record for record in self._history
-                if detection_type is None or record.detection_type.lower() == detection_type.lower()
+                if (detection_type is None or record.detection_type.lower() == detection_type.lower()) and
+                   (dominant_emotion is None or record.dominant_emotion.lower() == dominant_emotion.lower())
             ][::-1]  # Más recientes primero
             
             # Aplicar paginación
